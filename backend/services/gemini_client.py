@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import time
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +58,13 @@ class GeminiClient:
         }
 
     def _extract_json(self, text: str) -> str:
-        """Helper to extract JSON payload from text that might contain markdown blocks."""
+        """Helper to extract JSON payload and strip markdown, leading/trailing prose, and trailing commas."""
+        if not text:
+            return ""
+            
         text = text.strip()
+        
+        # Look for the outer-most JSON structure
         first_brace = text.find('{')
         first_bracket = text.find('[')
         
@@ -76,19 +82,24 @@ class GeminiClient:
             
         end_idx = text.rfind(end_char)
         if end_idx != -1:
-            return text[start_idx:end_idx + 1]
+            json_candidate = text[start_idx:end_idx + 1]
+        else:
+            json_candidate = text[start_idx:]
             
-        return text
+        # Clean trailing commas using regex (matches trailing commas inside objects and arrays)
+        json_candidate = re.sub(r',\s*}', '}', json_candidate)
+        json_candidate = re.sub(r',\s*\]', ']', json_candidate)
+        
+        return json_candidate
 
     def generate_json_content(self, prompt: str, retries: int = 1) -> dict:
         """
         FAIL-FAST PATH: No retries for network/auth/quota issues. Only retries once for JSON parse errors.
-        Limits tokens to 500 max to dramatically reduce generation latency.
+        Limits tokens to 1500 max to prevent runaway processing.
         """
         if not self.client:
             raise GeminiAuthError(f"Gemini client uninitialized. Errors: {self.errors}")
             
-        # Append strict instructions for rich but concise output
         json_instruction = "\n\nCRITICAL: Return ONLY a valid JSON object or list. Keep outputs rich and specific, but concise and strictly structured. Avoid excessive paragraph verbosity. No markdown formatting outside the JSON."
         full_prompt = prompt + json_instruction
             
@@ -96,7 +107,6 @@ class GeminiClient:
         for attempt in range(retries + 1):
             start_time = time.time()
             try:
-                # Add performance constraints: allow rich outputs but prevent runaway generation
                 import google.generativeai as genai
                 generation_config = genai.types.GenerationConfig(max_output_tokens=1500)
                 
@@ -109,14 +119,16 @@ class GeminiClient:
                 logger.info(f"Gemini API Response Time: {latency:.3f}s")
                 
                 if response and response.text:
+                    raw_text = response.text
+                    logger.info(f"FULL RAW GEMINI RESPONSE TEXT:\n{raw_text}")
                     try:
-                        clean_text = self._extract_json(response.text)
+                        clean_text = self._extract_json(raw_text)
                         return json.loads(clean_text)
                     except json.JSONDecodeError as je:
-                        logger.warning(f"Gemini returned invalid JSON. Retrying JSON parse loop...")
+                        logger.warning(f"Gemini returned invalid JSON (Attempt {attempt+1}). Error: {je}. Retrying parsing...")
                         json_failures += 1
                         if json_failures >= 2:
-                            raise GeminiInvalidJSONError("Gemini returned invalid JSON twice.") from je
+                            raise GeminiInvalidJSONError(f"Gemini returned invalid JSON twice. Raw response: {raw_text}") from je
                         continue
                         
                 raise GeminiInvalidJSONError("Gemini returned empty response.")
@@ -126,7 +138,7 @@ class GeminiClient:
                 if isinstance(e, GeminiException) and not isinstance(e, GeminiInvalidJSONError):
                     raise e
                 if isinstance(e, GeminiInvalidJSONError) and attempt < retries:
-                    continue # only retry JSON failures
+                    continue
                     
                 err_type = type(e).__name__
                 if "DeadlineExceeded" in err_type or "Timeout" in err_type:

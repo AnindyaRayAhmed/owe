@@ -36,7 +36,7 @@ class AIService:
     def get_daily_brief(self) -> dict:
         """
         Synthesizes the daily brief using Gemini based on rich BigQuery context.
-        Falls back to deterministic generation if the model is unavailable.
+        Falls back to deterministic generation if the model is unavailable or parsing fails.
         """
         start_time = time.time()
         raw_data = self.bq_service.fetch_civic_data()
@@ -63,27 +63,17 @@ class AIService:
             else:
                 raise GeminiException("Daily brief generated empty response")
         except Exception as e:
-            is_fallback_allowed = isinstance(e, (
-                GeminiTimeoutError,
-                GeminiQuotaError,
-                GeminiAuthError,
-                GeminiInvalidJSONError
-            )) or (not isinstance(e, GeminiException))
-            
-            if is_fallback_allowed:
-                logger.warning(f"Gemini daily brief failed due to: {type(e).__name__} - {e}. Activating fallback.")
-                fallback = self._simulate_daily_brief(raw_data)
-                elapsed = time.time() - start_time
-                logger.info(f"Total Endpoint Time (get_daily_brief - fallback): {elapsed:.3f}s")
-                return fallback
-            else:
-                logger.error(f"Daily brief failed (no fallback allowed): {e}")
-                raise e
+            # Fall back to deterministic mock aggregator logic on ANY exception (timeouts, quotas, JSON errors, etc.)
+            logger.warning(f"Gemini daily brief failed due to: {type(e).__name__} - {e}. Activating fallback.")
+            fallback = self._simulate_daily_brief(raw_data)
+            elapsed = time.time() - start_time
+            logger.info(f"Total Endpoint Time (get_daily_brief - fallback): {elapsed:.3f}s")
+            return fallback
 
     def get_missions(self) -> list:
         """
         Synthesizes rich, human-centered community missions using Gemini.
-        Falls back to deterministic database mapping if the model fails.
+        Falls back to deterministic database mapping if the model fails or parsing fails.
         """
         start_time = time.time()
         raw_data = self.bq_service.fetch_civic_data()
@@ -106,21 +96,11 @@ class AIService:
             else:
                 raise GeminiException("Missions generated empty response")
         except Exception as e:
-            is_fallback_allowed = isinstance(e, (
-                GeminiTimeoutError,
-                GeminiQuotaError,
-                GeminiAuthError,
-                GeminiInvalidJSONError
-            )) or (not isinstance(e, GeminiException))
-            
-            if is_fallback_allowed:
-                logger.warning(f"Gemini missions failed due to: {type(e).__name__} - {e}. Activating fallback.")
-                elapsed = time.time() - start_time
-                logger.info(f"Total Endpoint Time (get_missions - fallback): {elapsed:.3f}s")
-                return raw_data.get("missions", [])
-            else:
-                logger.error(f"Missions failed (no fallback allowed): {e}")
-                raise e
+            # Fall back to deterministic missions database values on ANY exception
+            logger.warning(f"Gemini missions failed due to: {type(e).__name__} - {e}. Activating fallback.")
+            elapsed = time.time() - start_time
+            logger.info(f"Total Endpoint Time (get_missions - fallback): {elapsed:.3f}s")
+            return raw_data.get("missions", [])
 
     def chat(self, user_query: str, chat_history: list = None) -> dict:
         """
@@ -159,24 +139,13 @@ class AIService:
             else:
                 raise GeminiException("Chat JSON response missing 'reply' or 'response' key.")
         except Exception as e:
-            is_fallback_allowed = isinstance(e, (
-                GeminiTimeoutError,
-                GeminiQuotaError,
-                GeminiAuthError,
-                GeminiInvalidJSONError
-            )) or (not isinstance(e, GeminiException))
+            logger.warning(f"Gemini chat failed due to: {type(e).__name__} - {e}. Activating fallback.")
+            fallback_response = self._simulate_chat(user_query, raw_data)
+            fallback_response["engine"] = "fallback"
             
-            if is_fallback_allowed:
-                logger.warning(f"Gemini chat failed due to: {type(e).__name__} - {e}. Activating fallback.")
-                fallback_response = self._simulate_chat(user_query, raw_data)
-                fallback_response["engine"] = "fallback"
-                
-                elapsed = time.time() - start_time
-                logger.info(f"Total Endpoint Time (chat - fallback): {elapsed:.3f}s")
-                return fallback_response
-            else:
-                logger.error(f"Chat failed (no fallback allowed): {e}")
-                raise e
+            elapsed = time.time() - start_time
+            logger.info(f"Total Endpoint Time (chat - fallback): {elapsed:.3f}s")
+            return fallback_response
 
     def _simulate_daily_brief(self, raw_data: dict) -> dict:
         dashboard = raw_data.get("dashboard", {})
