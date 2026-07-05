@@ -66,7 +66,11 @@ def chat_with_civic_ai(request: ChatRequest):
     """
     try:
         response = ai_service.chat(request.message)
-        return ChatResponse(reply=response["reply"], source=response.get("source"))
+        return ChatResponse(
+            reply=response["reply"],
+            source=response.get("source"),
+            engine=response.get("engine", "fallback")
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 

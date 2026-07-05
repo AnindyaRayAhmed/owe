@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     source: Optional[str] = None
+    engine: str
 
 class GeminiDebugResponse(BaseModel):
     status: str

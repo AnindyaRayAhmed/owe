@@ -1,7 +1,15 @@
 import os
 import json
 import logging
-from services.gemini_client import GeminiClient
+import time
+from services.gemini_client import (
+    GeminiClient,
+    GeminiException,
+    GeminiTimeoutError,
+    GeminiQuotaError,
+    GeminiAuthError,
+    GeminiInvalidJSONError
+)
 from services.bigquery_service import BigQueryService
 from services.context_builder import ContextBuilder
 
@@ -30,46 +38,82 @@ class AIService:
         Orchestrates BigQuery -> Context Assembly -> Gemini 2.5 JSON Pipeline
         """
         raw_data = self.bq_service.fetch_civic_data()
-        
-        # 1. Try real Gemini first with structured JSON enforcement
-        if self.gemini_client.api_key:
+        start_time = time.time()
+        try:
             context = ContextBuilder.build_daily_brief_context(raw_data)
             prompt_template = self._load_prompt("daily_brief_prompt.txt")
             prompt = prompt_template.replace("{civic_context}", context)
             
-            # The client will retry once internally if JSON is malformed
             api_response = self.gemini_client.generate_json_content(prompt, retries=1)
             if api_response:
+                logger.info("USING GEMINI RESPONSE")
+                elapsed = time.time() - start_time
+                logger.info(f"Daily brief generation latency: {elapsed:.3f}s")
                 api_response["source"] = "gemini"
                 return api_response
             else:
-                logger.warning("Gemini JSON generation failed. Activating deterministic fallback engine.")
-
-        # 2. Deterministic Simulation Fallback
-        return self._simulate_daily_brief(raw_data)
+                raise GeminiException("Daily brief generated empty response")
+        except Exception as e:
+            is_fallback_allowed = isinstance(e, (
+                GeminiTimeoutError,
+                GeminiQuotaError,
+                GeminiAuthError,
+                GeminiInvalidJSONError
+            )) or (not isinstance(e, GeminiException))
+            
+            if is_fallback_allowed:
+                logger.info("USING FALLBACK RESPONSE")
+                logger.warning(f"Gemini daily brief failed due to: {type(e).__name__} - {e}. Activating fallback.")
+                elapsed = time.time() - start_time
+                logger.info(f"Daily brief latency (fallback): {elapsed:.3f}s")
+                return self._simulate_daily_brief(raw_data)
+            else:
+                logger.error(f"Daily brief failed (no fallback allowed): {e}")
+                raise e
 
     def get_missions(self) -> list:
         raw_data = self.bq_service.fetch_civic_data()
-        
-        if self.gemini_client.api_key:
+        start_time = time.time()
+        try:
             context = ContextBuilder.build_missions_context(raw_data)
             prompt_template = self._load_prompt("mission_generation_prompt.txt")
             prompt = prompt_template.replace("{civic_context}", context)
             
             api_response = self.gemini_client.generate_json_content(prompt, retries=1)
-            if api_response and isinstance(api_response, list):
-                return api_response
-            elif api_response and "missions" in api_response:
-                return api_response["missions"]
+            if api_response:
+                logger.info("USING GEMINI RESPONSE")
+                elapsed = time.time() - start_time
+                logger.info(f"Missions generation latency: {elapsed:.3f}s")
+                if isinstance(api_response, list):
+                    return api_response
+                elif "missions" in api_response:
+                    return api_response["missions"]
+                else:
+                    raise GeminiException("Missions JSON lacks expected format (neither list nor key 'missions' present).")
             else:
-                logger.warning("Gemini Mission generation failed. Activating fallback engine.")
-
-        return raw_data.get("missions", [])
+                raise GeminiException("Missions generated empty response")
+        except Exception as e:
+            is_fallback_allowed = isinstance(e, (
+                GeminiTimeoutError,
+                GeminiQuotaError,
+                GeminiAuthError,
+                GeminiInvalidJSONError
+            )) or (not isinstance(e, GeminiException))
+            
+            if is_fallback_allowed:
+                logger.info("USING FALLBACK RESPONSE")
+                logger.warning(f"Gemini missions failed due to: {type(e).__name__} - {e}. Activating fallback.")
+                elapsed = time.time() - start_time
+                logger.info(f"Missions latency (fallback): {elapsed:.3f}s")
+                return raw_data.get("missions", [])
+            else:
+                logger.error(f"Missions failed (no fallback allowed): {e}")
+                raise e
 
     def chat(self, user_query: str, chat_history: list = None) -> dict:
         raw_data = self.bq_service.fetch_civic_data()
-        
-        if self.gemini_client.api_key:
+        start_time = time.time()
+        try:
             context = ContextBuilder.build_chat_context(raw_data, chat_history)
             prompt_template = self._load_prompt("civic_chat_prompt.txt")
             
@@ -80,15 +124,45 @@ class AIService:
             # Chat endpoints typically return text, but we enforce JSON wrapper for consistency
             api_response = self.gemini_client.generate_json_content(prompt, retries=1)
             if api_response and "reply" in api_response:
-                api_response["source"] = "gemini"
-                return api_response
+                logger.info("USING GEMINI RESPONSE")
+                elapsed = time.time() - start_time
+                logger.info(f"Chat response latency: {elapsed:.3f}s")
+                return {
+                    "reply": api_response["reply"],
+                    "source": "gemini",
+                    "engine": "gemini"
+                }
             elif api_response and "response" in api_response:
-                return {"reply": api_response["response"], "source": "gemini"}
+                logger.info("USING GEMINI RESPONSE")
+                elapsed = time.time() - start_time
+                logger.info(f"Chat response latency: {elapsed:.3f}s")
+                return {
+                    "reply": api_response["response"],
+                    "source": "gemini",
+                    "engine": "gemini"
+                }
             else:
-                logger.warning("Gemini Chat generation failed. Activating fallback engine.")
-
-        # Fallback chat reasoning
-        return self._simulate_chat(user_query, raw_data)
+                raise GeminiException("Chat JSON response missing 'reply' or 'response' key.")
+        except Exception as e:
+            is_fallback_allowed = isinstance(e, (
+                GeminiTimeoutError,
+                GeminiQuotaError,
+                GeminiAuthError,
+                GeminiInvalidJSONError
+            )) or (not isinstance(e, GeminiException))
+            
+            if is_fallback_allowed:
+                logger.info("USING FALLBACK RESPONSE")
+                logger.warning(f"Gemini chat failed due to: {type(e).__name__} - {e}. Activating fallback.")
+                elapsed = time.time() - start_time
+                logger.info(f"Chat response latency (fallback): {elapsed:.3f}s")
+                
+                fallback_response = self._simulate_chat(user_query, raw_data)
+                fallback_response["engine"] = "fallback"
+                return fallback_response
+            else:
+                logger.error(f"Chat failed (no fallback allowed): {e}")
+                raise e
 
     # --- Deterministic Fallbacks ---
     def _simulate_daily_brief(self, raw_data: dict) -> dict:

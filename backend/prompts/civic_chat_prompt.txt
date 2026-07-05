@@ -16,3 +16,5 @@ REQUIREMENTS:
 {
   "reply": "String (Your thoughtful, multi-paragraph response explaining the context using the data provided. Use markdown bolding for localities like **Kasba**.)"
 }
+
+3. Do NOT return rigid, template-style civic summaries. Preserve your reasoning depth and variability. Write in a thoughtful, organic, and narrative conversational style that details the underlying data, contextual nuances, and local dynamics."
