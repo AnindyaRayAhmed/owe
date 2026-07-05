@@ -121,7 +121,6 @@ class AIService:
                       .replace("{civic_context}", context)
                       .replace("{user_query}", user_query))
                       
-            # Chat endpoints typically return text, but we enforce JSON wrapper for consistency
             api_response = self.gemini_client.generate_json_content(prompt, retries=1)
             if api_response and "reply" in api_response:
                 logger.info("USING GEMINI RESPONSE")
@@ -166,56 +165,39 @@ class AIService:
 
     # --- Deterministic Fallbacks ---
     def _simulate_daily_brief(self, raw_data: dict) -> dict:
-        acc_incidents = [x for x in raw_data.get("accessibility_incidents", []) if x.get("status") != "resolved"]
-        trans_congestion = [x for x in raw_data.get("transport_congestion", []) if x.get("status") != "resolved"]
-        env_stress = [x for x in raw_data.get("environmental_stress", []) if x.get("status") != "resolved"]
-        complaints = [x for x in raw_data.get("civic_complaints", []) if x.get("status") != "resolved"]
-        
-        total_friction = len(acc_incidents) + len(trans_congestion) + len(env_stress) + len(complaints)
-        pulse_score = max(50, 100 - (total_friction * 3))
+        dashboard = raw_data.get("dashboard", {})
+        total_friction = dashboard.get("friction_points", 0)
+        pulse_score = dashboard.get("pulse_score", 50)
+        open_missions = dashboard.get("open_missions", 0)
 
         insights = []
-        
-        # Kasba Grouping
-        kasba_acc = [x for x in acc_incidents if x.get("locality") == "Kasba"]
-        if kasba_acc:
+        acc_summary = raw_data.get("accessibility", [])
+        if acc_summary:
             insights.append({
-                "title": "Pedestrian barriers emerging in Kasba",
-                "description": "Water accumulation seems to be restricting access for seniors, while slow-moving connector traffic adds minor congestion.",
+                "title": f"Accessibility issues in {acc_summary[0].get('neighborhood', 'various areas')}",
+                "description": f"Highest reports involve {acc_summary[0].get('issue_type', 'barriers')} affecting local mobility.",
                 "signalStrength": "High",
                 "affectedGroups": "Seniors, Commuters",
-                "timeframe": "today",
-                "explainability": f"Recent reports suggest a correlation between {len(kasba_acc)} accessibility barrier and localized transit delays today."
-            })
-            
-        # Jadavpur Grouping
-        jadavpur_civ = [x for x in complaints if x.get("locality") == "Jadavpur"]
-        if jadavpur_civ:
-            insights.append({
-                "title": "Streetlight outages causing safety concern in Jadavpur",
-                "description": "Late evening access has seen reduced visibility, though local residents appear to be coordinating safety walks.",
-                "signalStrength": "Moderate",
-                "affectedGroups": "Students",
                 "timeframe": "past 48 hours",
-                "explainability": "Signals from the past 48 hours point toward unresolved infrastructure gaps, though mitigated by collaborative community action."
+                "explainability": f"Aggregated from {acc_summary[0].get('issue_count', 0)} recent incident reports."
             })
 
-        pc_env = [x for x in env_stress if x.get("locality") == "Park Circus"]
-        if pc_env:
+        env_stress = raw_data.get("environmental", [])
+        if env_stress:
             insights.append({
-                "title": "Commute friction and air stress near Park Circus",
-                "description": "Elevated PM2.5 levels are continuing, suggesting moderate commuter fatigue despite easing traffic.",
-                "signalStrength": "High",
+                "title": f"Environmental stress near {env_stress[0].get('neighborhood', 'the city')}",
+                "description": "Elevated scores suggest commuter fatigue and potential weather-related disruption.",
+                "signalStrength": "Moderate",
                 "affectedGroups": "Commuters, Local Residents",
                 "timeframe": "past 24 hours",
-                "explainability": "Aggregated from local air quality indices and historical traffic patterns over the past 24 hours."
+                "explainability": "Derived from real-time environmental score aggregation."
             })
 
         return {
             "pulseScore": pulse_score,
-            "activeNeighbors": "1,420",
+            "activeNeighbors": "2,450",
             "frictionPoints": total_friction,
-            "openMissions": len(raw_data.get("missions", [])),
+            "openMissions": open_missions,
             "insights": insights,
             "momentum": raw_data.get("momentum", []),
             "source": "fallback"
@@ -223,27 +205,19 @@ class AIService:
         
     def _simulate_chat(self, user_query: str, raw_data: dict) -> dict:
         query = user_query.lower()
-        localities_found = [loc for loc in raw_data.get("localities", []) if loc.lower() in query]
-        
         if "improve" in query or "momentum" in query or "resolve" in query:
+            momentum = raw_data.get("momentum", [])
+            details = [m.get("detail", "") for m in momentum[:2]]
             reply = (
                 "Recent reports suggest strong community momentum and resilience. "
-                "For instance, yesterday in Salt Lake, residents planted 50 saplings to improve air quality. "
-                "Today, we also noticed that a scattered waste issue in Lake Market was swiftly cleared. "
-                "\n\nThese signals from the past 48 hours point toward an active, supportive civic network."
+                f"We noticed these recent wins: {', '.join(details)}. "
+                "\n\nThese signals point toward an active, supportive civic network."
             )
-        elif localities_found:
-            loc = localities_found[0]
-            acc = [x for x in raw_data.get("accessibility_incidents", []) if x.get("locality") == loc]
-            momentum = [x for x in raw_data.get("momentum", []) if loc.lower() in x.get("description", "").lower()]
-            
-            if acc:
-                reply = f"Regarding **{loc}**, we've noticed some friction today, primarily around {acc[0]['title']}. These observations are grounded in local civic feeds."
-            elif momentum:
-                reply = f"Regarding **{loc}**, there is notable positive progress: {momentum[0]['description']}."
-            else:
-                reply = f"Recent signals from **{loc}** suggest a relatively calm day. We haven't detected significant friction or disruptions."
         else:
-            reply = "I am here to help you understand local civic patterns and community momentum in Kolkata."
+            acc = raw_data.get("accessibility", [])
+            if acc:
+                reply = f"We've noticed some friction today, primarily around {acc[0].get('issue_type')} in {acc[0].get('neighborhood')}. These observations are grounded in local civic feeds."
+            else:
+                reply = "I am here to help you understand local civic patterns and community momentum in Kolkata."
 
         return {"reply": reply, "source": "fallback"}

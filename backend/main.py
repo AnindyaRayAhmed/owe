@@ -42,6 +42,11 @@ def get_gemini_debug():
     """Runtime verification endpoint for Gemini pipeline."""
     return ai_service.gemini_client.get_debug_status()
 
+@app.get("/api/debug/bigquery")
+def get_bigquery_debug():
+    """Runtime verification endpoint for BigQuery integration."""
+    return ai_service.bq_service.get_debug_info()
+
 @app.get("/api/brief")
 def get_brief():
     """Returns the daily community brief synthesized by AI service."""
