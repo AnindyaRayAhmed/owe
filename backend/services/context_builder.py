@@ -29,24 +29,17 @@ class ContextBuilder:
 
     @staticmethod
     def build_missions_context(raw_data: dict) -> str:
-        """Assembles rich context specifically for generating community missions."""
-        context = "CIVIC SIGNALS FOR MISSIONS:\n\n"
+        """Assembles rich context specifically for generating community mission descriptions."""
+        missions = raw_data.get("missions", [])[:15]
         
-        acc = raw_data.get("accessibility", [])[:8]
-        if acc:
-            context += "ACCESSIBILITY HURDLES:\n" + "\n".join([f"- {a.get('neighborhood')}: {a.get('severity')} {a.get('issue_type')} affecting locals (Reports: {a.get('issue_count')})" for a in acc]) + "\n\n"
-            
-        env = raw_data.get("environmental", [])[:8]
-        if env:
-            context += "ENVIRONMENTAL STRESS:\n" + "\n".join([f"- {e.get('neighborhood')}: Avg Flood Risk {e.get('avg_flood_risk',0):.1f}, Avg Env Score {e.get('avg_env_score',0):.1f}" for e in env]) + "\n\n"
-            
-        trn = raw_data.get("transport", [])[:8]
-        if trn:
-            context += "TRANSPORTATION FRICTION:\n" + "\n".join([f"- {t.get('neighborhood')}: Avg Delay {t.get('avg_delay',0):.1f}m, Traffic Density {t.get('avg_density',0):.1f}" for t in trn]) + "\n\n"
-            
-        mom = raw_data.get("momentum", [])[:8]
-        if mom:
-            context += "RECENT POSITIVE MOMENTUM:\n" + "\n".join([f"- {m.get('detail')} in {m.get('neighborhood')}" for m in mom]) + "\n\n"
+        context = "ACTIVE MISSIONS REQUIRING ENRICHMENT:\n\n"
+        for i, m in enumerate(missions):
+            context += f"Mission ID: mission_{i}\n"
+            context += f"Title: {m.get('mission_title')}\n"
+            context += f"Neighborhood: {m.get('neighborhood')}\n"
+            context += f"Category: {m.get('category')}\n"
+            context += f"Urgency: {m.get('urgency_level')}\n"
+            context += f"Affected Group: {m.get('affected_group', 'Local residents')}\n\n"
             
         return context
 

@@ -86,7 +86,7 @@ class GeminiClient:
         else:
             json_candidate = text[start_idx:]
             
-        # Clean trailing commas using regex (matches trailing commas inside objects and arrays)
+        # Clean trailing commas using regex
         json_candidate = re.sub(r',\s*}', '}', json_candidate)
         json_candidate = re.sub(r',\s*\]', ']', json_candidate)
         
@@ -117,6 +117,11 @@ class GeminiClient:
                 
                 latency = time.time() - start_time
                 logger.info(f"Gemini API Response Time: {latency:.3f}s")
+                
+                # DIAGNOSTICS: Check truncation status
+                if hasattr(response, "candidates") and response.candidates:
+                    finish_reason = response.candidates[0].finish_reason
+                    logger.info(f"GEMINI FINISH REASON: {finish_reason}")
                 
                 if response and response.text:
                     raw_text = response.text
@@ -163,6 +168,10 @@ class GeminiClient:
             
             logger.info(f"Gemini API Text Latency: {time.time() - start_time:.3f}s")
             
+            if hasattr(response, "candidates") and response.candidates:
+                finish_reason = response.candidates[0].finish_reason
+                logger.info(f"GEMINI TEXT FINISH REASON: {finish_reason}")
+                
             if response and response.text:
                 return response.text
             raise GeminiGeneralError("Empty response.")
