@@ -11,36 +11,18 @@ except ImportError:
     google_exceptions = None
 
 # --- Custom Gemini Exceptions ---
-class GeminiException(Exception):
-    """Base exception for Gemini client errors."""
-    pass
-
-class GeminiTimeoutError(GeminiException):
-    """Raised when a timeout occurs during the Gemini request."""
-    pass
-
-class GeminiQuotaError(GeminiException):
-    """Raised when the Gemini quota is exceeded."""
-    pass
-
-class GeminiAuthError(GeminiException):
-    """Raised when there's an authentication or API key configuration issue."""
-    pass
-
-class GeminiInvalidJSONError(GeminiException):
-    """Raised when Gemini returns invalid JSON repeatedly."""
-    pass
-
-class GeminiGeneralError(GeminiException):
-    """Raised for any other general exceptions thrown by the Gemini API."""
-    pass
+class GeminiException(Exception): pass
+class GeminiTimeoutError(GeminiException): pass
+class GeminiQuotaError(GeminiException): pass
+class GeminiAuthError(GeminiException): pass
+class GeminiInvalidJSONError(GeminiException): pass
+class GeminiGeneralError(GeminiException): pass
 
 
 class GeminiClient:
     def __init__(self):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         self.client = None
-        # Upgraded to Gemini 2.5 Flash for live AI pipeline
         self.model_name = "gemini-2.5-flash"
         self.errors = []
         
@@ -48,9 +30,6 @@ class GeminiClient:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                
-                # We configure generation config to hint at JSON output
-                # Using standard parameters for robust execution
                 self.client = genai.GenerativeModel(self.model_name)
                 
                 masked_key = f"...{self.api_key[-4:]}" if len(self.api_key) > 4 else "***"
@@ -103,133 +82,77 @@ class GeminiClient:
 
     def generate_json_content(self, prompt: str, retries: int = 1) -> dict:
         """
-        Sends a prompt to the Gemini API, forcing a structured JSON parse manually.
-        If the response is malformed, it retries once.
-        Returns a dict if successful, or raises a GeminiException.
+        FAIL-FAST PATH: No retries for network/auth/quota issues. Only retries once for JSON parse errors.
+        Limits tokens to 500 max to dramatically reduce generation latency.
         """
         if not self.client:
-            raise GeminiAuthError(f"Gemini client is uninitialized. Configuration errors: {self.errors}")
+            raise GeminiAuthError(f"Gemini client uninitialized. Errors: {self.errors}")
             
-        # Append instructions ensuring the model output contains valid JSON
-        json_instruction = "\n\nCRITICAL: Return ONLY a valid JSON object or list. Do not include extra conversational text."
+        # Append strict instructions for concise output
+        json_instruction = "\n\nCRITICAL: Return ONLY a valid JSON object or list. Keep the response under 100 words. No markdown formatting outside the JSON."
         full_prompt = prompt + json_instruction
             
         json_failures = 0
         for attempt in range(retries + 1):
             start_time = time.time()
             try:
-                response = self.client.generate_content(full_prompt)
+                # Add performance constraints: limit max output tokens
+                import google.generativeai as genai
+                generation_config = genai.types.GenerationConfig(max_output_tokens=500)
+                
+                response = self.client.generate_content(
+                    full_prompt,
+                    generation_config=generation_config
+                )
                 
                 latency = time.time() - start_time
-                logger.info(f"Gemini API attempt {attempt + 1} latency: {latency:.3f} seconds")
+                logger.info(f"Gemini API Response Time: {latency:.3f}s")
                 
                 if response and response.text:
                     try:
                         clean_text = self._extract_json(response.text)
                         return json.loads(clean_text)
                     except json.JSONDecodeError as je:
-                        logger.warning(f"Attempt {attempt + 1}: Gemini returned invalid JSON. Raw: {response.text[:200]}... Retrying.")
+                        logger.warning(f"Gemini returned invalid JSON. Retrying JSON parse loop...")
                         json_failures += 1
                         if json_failures >= 2:
                             raise GeminiInvalidJSONError("Gemini returned invalid JSON twice.") from je
                         continue
                         
-                logger.warning(f"Attempt {attempt + 1}: Gemini API returned empty response.")
-                json_failures += 1
-                if json_failures >= 2:
-                    raise GeminiInvalidJSONError("Gemini returned empty response / invalid JSON twice.")
+                raise GeminiInvalidJSONError("Gemini returned empty response.")
                 
             except Exception as e:
-                if isinstance(e, GeminiException):
+                # Bypass standard retries to fail fast to deterministic fallback
+                if isinstance(e, GeminiException) and not isinstance(e, GeminiInvalidJSONError):
                     raise e
+                if isinstance(e, GeminiInvalidJSONError) and attempt < retries:
+                    continue # only retry JSON failures
                     
                 err_type = type(e).__name__
-                is_timeout = False
-                is_quota = False
-                is_auth = False
-                
-                if google_exceptions:
-                    if isinstance(e, (google_exceptions.DeadlineExceeded, google_exceptions.ServiceUnavailable)):
-                        is_timeout = True
-                    elif isinstance(e, google_exceptions.ResourceExhausted):
-                        is_quota = True
-                    elif isinstance(e, (google_exceptions.PermissionDenied, google_exceptions.Unauthenticated)):
-                        is_auth = True
-                
-                if "DeadlineExceeded" in err_type or "Timeout" in err_type or "Deadline Exceeded" in str(e):
-                    is_timeout = True
-                elif "ResourceExhausted" in err_type or "Quota" in err_type or "QuotaExceeded" in err_type:
-                    is_quota = True
-                elif "PermissionDenied" in err_type or "Unauthenticated" in err_type or "API_KEY_INVALID" in str(e) or "API key not valid" in str(e):
-                    is_auth = True
-                
-                if is_timeout:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API request timed out: {e}")
-                    if attempt == retries:
-                        raise GeminiTimeoutError(f"Gemini API request timed out: {e}") from e
-                elif is_quota:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API quota exceeded: {e}")
-                    if attempt == retries:
-                        raise GeminiQuotaError(f"Gemini API quota exceeded: {e}") from e
-                elif is_auth:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API authentication failed: {e}")
-                    if attempt == retries:
-                        raise GeminiAuthError(f"Gemini API authentication failed: {e}") from e
+                if "DeadlineExceeded" in err_type or "Timeout" in err_type:
+                    raise GeminiTimeoutError(f"API timeout: {e}") from e
+                elif "ResourceExhausted" in err_type or "Quota" in err_type:
+                    raise GeminiQuotaError(f"API quota: {e}") from e
+                elif "PermissionDenied" in err_type or "Unauthenticated" in err_type:
+                    raise GeminiAuthError(f"API auth failed: {e}") from e
                 else:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API execution failed: {e}")
-                    if attempt == retries:
-                        raise GeminiGeneralError(f"Gemini API execution failed: {e}") from e
+                    raise GeminiGeneralError(f"API failed: {e}") from e
 
-    def generate_text_content(self, prompt: str, retries: int = 1) -> str:
-        """Standard text generation for chat workflows."""
+    def generate_text_content(self, prompt: str, retries: int = 0) -> str:
+        """Fail-fast text generation. No retries."""
         if not self.client:
-            raise GeminiAuthError(f"Gemini client is uninitialized. Configuration errors: {self.errors}")
+            raise GeminiAuthError(f"Gemini uninitialized: {self.errors}")
             
-        for attempt in range(retries + 1):
-            start_time = time.time()
-            try:
-                response = self.client.generate_content(prompt)
-                latency = time.time() - start_time
-                logger.info(f"Gemini API text attempt {attempt + 1} latency: {latency:.3f} seconds")
-                if response and response.text:
-                    return response.text
-                logger.warning(f"Attempt {attempt + 1}: Gemini API returned empty text response.")
-                if attempt == retries:
-                    raise GeminiGeneralError("Gemini returned empty text response.")
-            except Exception as e:
-                err_type = type(e).__name__
-                is_timeout = False
-                is_quota = False
-                is_auth = False
-                
-                if google_exceptions:
-                    if isinstance(e, (google_exceptions.DeadlineExceeded, google_exceptions.ServiceUnavailable)):
-                        is_timeout = True
-                    elif isinstance(e, google_exceptions.ResourceExhausted):
-                        is_quota = True
-                    elif isinstance(e, (google_exceptions.PermissionDenied, google_exceptions.Unauthenticated)):
-                        is_auth = True
-                
-                if "DeadlineExceeded" in err_type or "Timeout" in err_type or "Deadline Exceeded" in str(e):
-                    is_timeout = True
-                elif "ResourceExhausted" in err_type or "Quota" in err_type or "QuotaExceeded" in err_type:
-                    is_quota = True
-                elif "PermissionDenied" in err_type or "Unauthenticated" in err_type or "API_KEY_INVALID" in str(e) or "API key not valid" in str(e):
-                    is_auth = True
-                
-                if is_timeout:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API request timed out: {e}")
-                    if attempt == retries:
-                        raise GeminiTimeoutError(f"Gemini API request timed out: {e}") from e
-                elif is_quota:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API quota exceeded: {e}")
-                    if attempt == retries:
-                        raise GeminiQuotaError(f"Gemini API quota exceeded: {e}") from e
-                elif is_auth:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API authentication failed: {e}")
-                    if attempt == retries:
-                        raise GeminiAuthError(f"Gemini API authentication failed: {e}") from e
-                else:
-                    logger.error(f"Attempt {attempt + 1}: Gemini API execution failed: {e}")
-                    if attempt == retries:
-                        raise GeminiGeneralError(f"Gemini API execution failed: {e}") from e
+        start_time = time.time()
+        try:
+            import google.generativeai as genai
+            generation_config = genai.types.GenerationConfig(max_output_tokens=500)
+            response = self.client.generate_content(prompt, generation_config=generation_config)
+            
+            logger.info(f"Gemini API Text Latency: {time.time() - start_time:.3f}s")
+            
+            if response and response.text:
+                return response.text
+            raise GeminiGeneralError("Empty response.")
+        except Exception as e:
+            raise GeminiGeneralError(f"API failed: {e}") from e

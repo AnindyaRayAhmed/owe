@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { sendChatMessage } from '../services/api';
-import { Send, Bot, User, Sparkles } from 'lucide-react';
+import { Send, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const suggestedPrompts = [
@@ -51,7 +51,9 @@ const Chat = () => {
       
       <div className="mb-4 text-center space-y-2 bg-glow-glow py-3 rounded-2xl relative overflow-hidden">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-owe-textPrimary flex items-center justify-center relative z-10">
-          <Sparkles size={20} className="text-owe-primary mr-2" />
+          <div className="w-8 h-8 rounded-xl bg-owe-cyan/20 border border-owe-cyan/30 flex items-center justify-center mr-2.5 p-1 flex-shrink-0">
+            <img src="/logo.svg" alt="Owe Logo" className="w-full h-full object-contain" />
+          </div>
           Conversational Civic AI
         </h2>
         <p className="text-owe-textSecondary text-sm sm:text-base relative z-10">Explore local momentum, analyze friction, and find ways to help.</p>
@@ -63,8 +65,8 @@ const Chat = () => {
           <div key={idx} className="space-y-2">
             <div className={`flex items-start space-x-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-owe-primary to-owe-secondary text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <Bot size={16} />
+                <div className="w-8 h-8 rounded-xl bg-owe-cyan/20 border border-owe-cyan/30 flex items-center justify-center flex-shrink-0 shadow-sm p-1">
+                  <img src="/logo.svg" alt="Owe Logo" className="w-full h-full object-contain" />
                 </div>
               )}
               <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm sm:text-base leading-relaxed break-words overflow-hidden ${
@@ -124,8 +126,8 @@ const Chat = () => {
         ))}
         {isLoading && (
           <div className="flex items-start space-x-3 justify-start">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-owe-primary to-owe-secondary text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-              <Bot size={16} />
+            <div className="w-8 h-8 rounded-xl bg-owe-cyan/20 border border-owe-cyan/30 flex items-center justify-center flex-shrink-0 shadow-sm p-1">
+              <img src="/logo.svg" alt="Owe Logo" className="w-full h-full object-contain" />
             </div>
             <div className="bg-owe-cyan/15 text-owe-textSecondary border border-owe-border/45 px-4 py-2.5 rounded-2xl rounded-tl-sm flex space-x-1.5 items-center">
               <div className="w-1.5 h-1.5 rounded-full bg-owe-primary/70 animate-bounce" style={{ animationDelay: '0ms' }}></div>

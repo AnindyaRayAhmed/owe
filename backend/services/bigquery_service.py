@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import time
+import concurrent.futures
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,8 @@ class BigQueryService:
         self.fallback_data_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "mock_data", "civic_feeds.json"
         )
+        self._cache = None
+        self._cache_time = 0
         
         try:
             from google.cloud import bigquery
@@ -45,28 +48,26 @@ class BigQueryService:
             raise e
 
     def get_dashboard_metrics(self) -> dict:
-        """Aggregates high-level metrics over the last 24-48 hours."""
         if not self.client:
             return self._load_fallback_data()
             
         try:
-            # Query for open friction points (unresolved incidents) and active missions
             query = f"""
                 SELECT 
-                  (SELECT COUNT(*) FROM `{self.project_id}.{self.dataset_id}.accessibility_incidents` WHERE response_status != 'Resolved') as friction_points,
+                  (SELECT COUNT(*) FROM `{self.project_id}.{self.dataset_id}.accessibility_incidents` WHERE response_status != 'Resolved' AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)) as friction_points,
                   (SELECT COUNT(*) FROM `{self.project_id}.{self.dataset_id}.community_missions` WHERE completion_status IN ('Active', 'Planned')) as open_missions
             """
             result = self._execute_query(query)
             if result:
                 friction = result[0].get("friction_points", 0)
                 missions = result[0].get("open_missions", 0)
-                pulse_score = max(50, 100 - int(friction * 0.1)) # Arbitrary logic for pulse score
+                pulse_score = max(50, 100 - int(friction * 0.1)) 
                 
                 return {
                     "friction_points": friction,
                     "open_missions": missions,
                     "pulse_score": pulse_score,
-                    "active_neighbors": "2,450" # Could be queried if user data existed
+                    "active_neighbors": "2,450"
                 }
             return {}
         except Exception as e:
@@ -74,7 +75,6 @@ class BigQueryService:
             return self._load_fallback_data()
 
     def get_emerging_signals(self) -> list:
-        """Fetch emerging negative signals from various datasets."""
         if not self.client:
             return []
             
@@ -83,15 +83,15 @@ class BigQueryService:
                 SELECT * FROM (
                   SELECT 'Environmental' as type, neighborhood, heat_risk_level as detail, CAST(timestamp AS STRING) as timestamp 
                   FROM `{self.project_id}.{self.dataset_id}.environmental_stress`
-                  WHERE heat_risk_level = 'Extreme' OR flooding_risk > 8.0
-                  ORDER BY timestamp DESC LIMIT 5
+                  WHERE (heat_risk_level = 'Extreme' OR flooding_risk > 8.0) AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
+                  ORDER BY timestamp DESC LIMIT 3
                 )
                 UNION ALL
                 SELECT * FROM (
                   SELECT 'Transport' as type, neighborhood, congestion_level as detail, CAST(timestamp AS STRING) as timestamp
                   FROM `{self.project_id}.{self.dataset_id}.transport_density`
-                  WHERE congestion_level = 'Gridlock'
-                  ORDER BY timestamp DESC LIMIT 5
+                  WHERE congestion_level = 'Gridlock' AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
+                  ORDER BY timestamp DESC LIMIT 3
                 )
             """
             return self._execute_query(query)
@@ -100,7 +100,6 @@ class BigQueryService:
             return []
 
     def get_community_momentum(self) -> list:
-        """Fetch positive momentum (completed missions, resolved incidents)."""
         if not self.client:
             return self._load_fallback_data().get("momentum", [])
             
@@ -109,15 +108,15 @@ class BigQueryService:
                 SELECT * FROM (
                   SELECT 'Mission' as type, neighborhood, mission_title as detail, CAST(created_at AS STRING) as timestamp
                   FROM `{self.project_id}.{self.dataset_id}.community_missions`
-                  WHERE completion_status = 'Completed'
-                  ORDER BY created_at DESC LIMIT 5
+                  WHERE completion_status = 'Completed' AND created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+                  ORDER BY created_at DESC LIMIT 3
                 )
                 UNION ALL
                 SELECT * FROM (
                   SELECT 'Sentiment' as type, neighborhood, dominant_topic as detail, CAST(timestamp AS STRING) as timestamp
                   FROM `{self.project_id}.{self.dataset_id}.community_sentiment`
-                  WHERE sentiment_score > 0.5
-                  ORDER BY timestamp DESC LIMIT 5
+                  WHERE sentiment_score > 0.5 AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+                  ORDER BY timestamp DESC LIMIT 3
                 )
             """
             return self._execute_query(query)
@@ -135,7 +134,7 @@ class BigQueryService:
                 FROM `{self.project_id}.{self.dataset_id}.community_missions`
                 WHERE completion_status IN ('Active', 'Planned')
                 ORDER BY urgency_level DESC, created_at DESC
-                LIMIT 20
+                LIMIT 5
             """
             return self._execute_query(query)
         except Exception as e:
@@ -152,7 +151,7 @@ class BigQueryService:
                 WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
                 GROUP BY neighborhood
                 ORDER BY avg_density DESC
-                LIMIT 10
+                LIMIT 3
             """
             return self._execute_query(query)
         except Exception as e:
@@ -169,7 +168,7 @@ class BigQueryService:
                 WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
                 GROUP BY neighborhood
                 ORDER BY avg_env_score DESC
-                LIMIT 10
+                LIMIT 3
             """
             return self._execute_query(query)
         except Exception as e:
@@ -183,10 +182,10 @@ class BigQueryService:
             query = f"""
                 SELECT neighborhood, issue_type, severity, COUNT(*) as issue_count
                 FROM `{self.project_id}.{self.dataset_id}.accessibility_incidents`
-                WHERE response_status != 'Resolved'
+                WHERE response_status != 'Resolved' AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
                 GROUP BY neighborhood, issue_type, severity
                 ORDER BY issue_count DESC
-                LIMIT 20
+                LIMIT 5
             """
             return self._execute_query(query)
         except Exception as e:
@@ -203,7 +202,7 @@ class BigQueryService:
                 WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
                 GROUP BY neighborhood
                 ORDER BY avg_frustration DESC
-                LIMIT 10
+                LIMIT 3
             """
             return self._execute_query(query)
         except Exception as e:
@@ -211,27 +210,51 @@ class BigQueryService:
             return []
 
     def fetch_civic_data(self) -> dict:
-        """Legacy aggregator method for backward compatibility if needed."""
+        """Fetch all data in parallel and cache the result."""
         if not self.client:
             return self._load_fallback_data()
             
+        current_time = time.time()
+        if self._cache and (current_time - self._cache_time) < 60:
+            logger.info("Serving BigQuery data from in-memory cache (TTL: 60s)")
+            return self._cache
+            
+        logger.info("Fetching BigQuery aggregations in parallel...")
+        start_time = time.time()
+        
         try:
-            return {
-                "dashboard": self.get_dashboard_metrics(),
-                "emerging_signals": self.get_emerging_signals(),
-                "momentum": self.get_community_momentum(),
-                "missions": self.get_active_missions(),
-                "transport": self.get_transport_density(),
-                "environmental": self.get_environmental_stress(),
-                "accessibility": self.get_accessibility_summary(),
-                "sentiment": self.get_sentiment_summary()
-            }
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                future_dash = executor.submit(self.get_dashboard_metrics)
+                future_signals = executor.submit(self.get_emerging_signals)
+                future_momentum = executor.submit(self.get_community_momentum)
+                future_missions = executor.submit(self.get_active_missions)
+                future_transport = executor.submit(self.get_transport_density)
+                future_env = executor.submit(self.get_environmental_stress)
+                future_acc = executor.submit(self.get_accessibility_summary)
+                future_sent = executor.submit(self.get_sentiment_summary)
+                
+                result = {
+                    "dashboard": future_dash.result(),
+                    "emerging_signals": future_signals.result(),
+                    "momentum": future_momentum.result(),
+                    "missions": future_missions.result(),
+                    "transport": future_transport.result(),
+                    "environmental": future_env.result(),
+                    "accessibility": future_acc.result(),
+                    "sentiment": future_sent.result()
+                }
+                
+            self._cache = result
+            self._cache_time = current_time
+            
+            elapsed = time.time() - start_time
+            logger.info(f"BigQuery Total Fetch Time (Parallel): {elapsed:.3f}s")
+            return result
         except Exception as e:
             logger.error(f"Failed to fetch aggregated civic data: {e}")
             return self._load_fallback_data()
 
     def get_debug_info(self) -> dict:
-        """Returns BigQuery connection status and sample table counts."""
         if not self.client:
             return {"status": "disconnected", "dataset": self.dataset_id, "error": "Client not initialized."}
             
