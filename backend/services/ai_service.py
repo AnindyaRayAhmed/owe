@@ -35,67 +35,92 @@ class AIService:
 
     def get_daily_brief(self) -> dict:
         """
-        FAST PATH: Deterministically generates the daily brief from BigQuery.
-        Bypasses Gemini to ensure sub-second latency for the Dashboard overview.
+        Synthesizes the daily brief using Gemini based on rich BigQuery context.
+        Falls back to deterministic generation if the model is unavailable.
         """
         start_time = time.time()
         raw_data = self.bq_service.fetch_civic_data()
         
-        dashboard = raw_data.get("dashboard", {})
-        total_friction = dashboard.get("friction_points", 0)
-        pulse_score = dashboard.get("pulse_score", 50)
-        open_missions = dashboard.get("open_missions", 0)
-
-        insights = []
-        acc_summary = raw_data.get("accessibility", [])
-        if acc_summary:
-            insights.append({
-                "title": f"Accessibility issues in {acc_summary[0].get('neighborhood', 'various areas')}",
-                "description": f"Highest reports involve {acc_summary[0].get('issue_type', 'barriers')} affecting local mobility.",
-                "signalStrength": "High" if acc_summary[0].get('severity') == 'Critical' else "Moderate",
-                "affectedGroups": "Seniors, Commuters",
-                "timeframe": "past 7 days",
-                "explainability": f"Aggregated from {acc_summary[0].get('issue_count', 0)} recent incident reports."
-            })
-
-        env_stress = raw_data.get("environmental", [])
-        if env_stress:
-            insights.append({
-                "title": f"Environmental stress near {env_stress[0].get('neighborhood', 'the city')}",
-                "description": "Elevated scores suggest commuter fatigue and potential weather-related disruption.",
-                "signalStrength": "High" if env_stress[0].get('avg_env_score', 0) > 8 else "Moderate",
-                "affectedGroups": "Commuters, Local Residents",
-                "timeframe": "past 48 hours",
-                "explainability": "Derived from real-time environmental score aggregation."
-            })
-
-        elapsed = time.time() - start_time
-        logger.info(f"Total Endpoint Time (get_daily_brief): {elapsed:.3f}s")
-        
-        return {
-            "pulseScore": pulse_score,
-            "activeNeighbors": "2,450",
-            "frictionPoints": total_friction,
-            "openMissions": open_missions,
-            "insights": insights,
-            "momentum": raw_data.get("momentum", []),
-            "source": "deterministic"
-        }
+        try:
+            context = ContextBuilder.build_daily_brief_context(raw_data)
+            prompt_template = self._load_prompt("daily_brief_prompt.txt")
+            prompt = prompt_template.replace("{civic_context}", context)
+            
+            # Using fail-fast generation (0 retries)
+            api_response = self.gemini_client.generate_json_content(prompt, retries=0)
+            if api_response:
+                elapsed = time.time() - start_time
+                logger.info(f"Total Endpoint Time (get_daily_brief - gemini): {elapsed:.3f}s")
+                api_response["source"] = "gemini"
+                
+                # Merge dynamic insights with hard numeric metrics for the UI
+                dashboard = raw_data.get("dashboard", {})
+                api_response["pulseScore"] = dashboard.get("pulse_score", api_response.get("pulseScore", 50))
+                api_response["frictionPoints"] = dashboard.get("friction_points", api_response.get("frictionPoints", 0))
+                api_response["openMissions"] = dashboard.get("open_missions", api_response.get("openMissions", 0))
+                api_response["activeNeighbors"] = dashboard.get("active_neighbors", "2,450")
+                return api_response
+            else:
+                raise GeminiException("Daily brief generated empty response")
+        except Exception as e:
+            is_fallback_allowed = isinstance(e, (
+                GeminiTimeoutError,
+                GeminiQuotaError,
+                GeminiAuthError,
+                GeminiInvalidJSONError
+            )) or (not isinstance(e, GeminiException))
+            
+            if is_fallback_allowed:
+                logger.warning(f"Gemini daily brief failed due to: {type(e).__name__} - {e}. Activating fallback.")
+                fallback = self._simulate_daily_brief(raw_data)
+                elapsed = time.time() - start_time
+                logger.info(f"Total Endpoint Time (get_daily_brief - fallback): {elapsed:.3f}s")
+                return fallback
+            else:
+                logger.error(f"Daily brief failed (no fallback allowed): {e}")
+                raise e
 
     def get_missions(self) -> list:
         """
-        FAST PATH: Deterministically returns missions from BigQuery.
-        Bypasses Gemini to ensure sub-second latency for the Missions page.
+        Synthesizes rich, human-centered community missions using Gemini.
+        Falls back to deterministic database mapping if the model fails.
         """
         start_time = time.time()
         raw_data = self.bq_service.fetch_civic_data()
         
-        missions = raw_data.get("missions", [])
-        
-        elapsed = time.time() - start_time
-        logger.info(f"Total Endpoint Time (get_missions): {elapsed:.3f}s")
-        
-        return missions
+        try:
+            context = ContextBuilder.build_missions_context(raw_data)
+            prompt_template = self._load_prompt("mission_generation_prompt.txt")
+            prompt = prompt_template.replace("{civic_context}", context)
+            
+            api_response = self.gemini_client.generate_json_content(prompt, retries=0)
+            if api_response:
+                elapsed = time.time() - start_time
+                logger.info(f"Total Endpoint Time (get_missions - gemini): {elapsed:.3f}s")
+                if isinstance(api_response, list):
+                    return api_response
+                elif "missions" in api_response:
+                    return api_response["missions"]
+                else:
+                    raise GeminiException("Missions JSON lacks expected format.")
+            else:
+                raise GeminiException("Missions generated empty response")
+        except Exception as e:
+            is_fallback_allowed = isinstance(e, (
+                GeminiTimeoutError,
+                GeminiQuotaError,
+                GeminiAuthError,
+                GeminiInvalidJSONError
+            )) or (not isinstance(e, GeminiException))
+            
+            if is_fallback_allowed:
+                logger.warning(f"Gemini missions failed due to: {type(e).__name__} - {e}. Activating fallback.")
+                elapsed = time.time() - start_time
+                logger.info(f"Total Endpoint Time (get_missions - fallback): {elapsed:.3f}s")
+                return raw_data.get("missions", [])
+            else:
+                logger.error(f"Missions failed (no fallback allowed): {e}")
+                raise e
 
     def chat(self, user_query: str, chat_history: list = None) -> dict:
         """
@@ -114,7 +139,7 @@ class AIService:
                       .replace("{civic_context}", context)
                       .replace("{user_query}", user_query))
                       
-            api_response = self.gemini_client.generate_json_content(prompt, retries=0)  # Fail-fast enabled
+            api_response = self.gemini_client.generate_json_content(prompt, retries=0)
             if api_response and "reply" in api_response:
                 elapsed = time.time() - start_time
                 logger.info(f"Total Endpoint Time (chat - gemini): {elapsed:.3f}s")
@@ -152,6 +177,45 @@ class AIService:
             else:
                 logger.error(f"Chat failed (no fallback allowed): {e}")
                 raise e
+
+    def _simulate_daily_brief(self, raw_data: dict) -> dict:
+        dashboard = raw_data.get("dashboard", {})
+        total_friction = dashboard.get("friction_points", 0)
+        pulse_score = dashboard.get("pulse_score", 50)
+        open_missions = dashboard.get("open_missions", 0)
+
+        insights = []
+        acc_summary = raw_data.get("accessibility", [])
+        if acc_summary:
+            insights.append({
+                "title": f"Accessibility issues in {acc_summary[0].get('neighborhood', 'various areas')}",
+                "description": f"Highest reports involve {acc_summary[0].get('issue_type', 'barriers')} affecting local mobility.",
+                "signalStrength": "High" if acc_summary[0].get('severity') == 'Critical' else "Moderate",
+                "affectedGroups": "Seniors, Commuters",
+                "timeframe": "past 7 days",
+                "explainability": f"Aggregated from {acc_summary[0].get('issue_count', 0)} recent incident reports."
+            })
+
+        env_stress = raw_data.get("environmental", [])
+        if env_stress:
+            insights.append({
+                "title": f"Environmental stress near {env_stress[0].get('neighborhood', 'the city')}",
+                "description": "Elevated scores suggest commuter fatigue and potential weather-related disruption.",
+                "signalStrength": "High" if env_stress[0].get('avg_env_score', 0) > 8 else "Moderate",
+                "affectedGroups": "Commuters, Local Residents",
+                "timeframe": "past 48 hours",
+                "explainability": "Derived from real-time environmental score aggregation."
+            })
+
+        return {
+            "pulseScore": pulse_score,
+            "activeNeighbors": "2,450",
+            "frictionPoints": total_friction,
+            "openMissions": open_missions,
+            "insights": insights,
+            "momentum": raw_data.get("momentum", []),
+            "source": "deterministic"
+        }
 
     def _simulate_chat(self, user_query: str, raw_data: dict) -> dict:
         query = user_query.lower()

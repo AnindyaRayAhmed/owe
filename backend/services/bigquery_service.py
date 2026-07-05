@@ -84,14 +84,14 @@ class BigQueryService:
                   SELECT 'Environmental' as type, neighborhood, heat_risk_level as detail, CAST(timestamp AS STRING) as timestamp 
                   FROM `{self.project_id}.{self.dataset_id}.environmental_stress`
                   WHERE (heat_risk_level = 'Extreme' OR flooding_risk > 8.0) AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
-                  ORDER BY timestamp DESC LIMIT 3
+                  ORDER BY timestamp DESC LIMIT 8
                 )
                 UNION ALL
                 SELECT * FROM (
                   SELECT 'Transport' as type, neighborhood, congestion_level as detail, CAST(timestamp AS STRING) as timestamp
                   FROM `{self.project_id}.{self.dataset_id}.transport_density`
                   WHERE congestion_level = 'Gridlock' AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
-                  ORDER BY timestamp DESC LIMIT 3
+                  ORDER BY timestamp DESC LIMIT 8
                 )
             """
             return self._execute_query(query)
@@ -109,14 +109,14 @@ class BigQueryService:
                   SELECT 'Mission' as type, neighborhood, mission_title as detail, CAST(created_at AS STRING) as timestamp
                   FROM `{self.project_id}.{self.dataset_id}.community_missions`
                   WHERE completion_status = 'Completed' AND created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
-                  ORDER BY created_at DESC LIMIT 3
+                  ORDER BY created_at DESC LIMIT 8
                 )
                 UNION ALL
                 SELECT * FROM (
                   SELECT 'Sentiment' as type, neighborhood, dominant_topic as detail, CAST(timestamp AS STRING) as timestamp
                   FROM `{self.project_id}.{self.dataset_id}.community_sentiment`
                   WHERE sentiment_score > 0.5 AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
-                  ORDER BY timestamp DESC LIMIT 3
+                  ORDER BY timestamp DESC LIMIT 8
                 )
             """
             return self._execute_query(query)
@@ -134,7 +134,7 @@ class BigQueryService:
                 FROM `{self.project_id}.{self.dataset_id}.community_missions`
                 WHERE completion_status IN ('Active', 'Planned')
                 ORDER BY urgency_level DESC, created_at DESC
-                LIMIT 5
+                LIMIT 15
             """
             return self._execute_query(query)
         except Exception as e:
@@ -151,7 +151,7 @@ class BigQueryService:
                 WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
                 GROUP BY neighborhood
                 ORDER BY avg_density DESC
-                LIMIT 3
+                LIMIT 8
             """
             return self._execute_query(query)
         except Exception as e:
@@ -168,7 +168,7 @@ class BigQueryService:
                 WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
                 GROUP BY neighborhood
                 ORDER BY avg_env_score DESC
-                LIMIT 3
+                LIMIT 8
             """
             return self._execute_query(query)
         except Exception as e:
@@ -185,7 +185,7 @@ class BigQueryService:
                 WHERE response_status != 'Resolved' AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
                 GROUP BY neighborhood, issue_type, severity
                 ORDER BY issue_count DESC
-                LIMIT 5
+                LIMIT 15
             """
             return self._execute_query(query)
         except Exception as e:
@@ -202,7 +202,7 @@ class BigQueryService:
                 WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 48 HOUR)
                 GROUP BY neighborhood
                 ORDER BY avg_frustration DESC
-                LIMIT 3
+                LIMIT 8
             """
             return self._execute_query(query)
         except Exception as e:

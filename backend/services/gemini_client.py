@@ -88,17 +88,17 @@ class GeminiClient:
         if not self.client:
             raise GeminiAuthError(f"Gemini client uninitialized. Errors: {self.errors}")
             
-        # Append strict instructions for concise output
-        json_instruction = "\n\nCRITICAL: Return ONLY a valid JSON object or list. Keep the response under 100 words. No markdown formatting outside the JSON."
+        # Append strict instructions for rich but concise output
+        json_instruction = "\n\nCRITICAL: Return ONLY a valid JSON object or list. Keep outputs rich and specific, but concise and strictly structured. Avoid excessive paragraph verbosity. No markdown formatting outside the JSON."
         full_prompt = prompt + json_instruction
             
         json_failures = 0
         for attempt in range(retries + 1):
             start_time = time.time()
             try:
-                # Add performance constraints: limit max output tokens
+                # Add performance constraints: allow rich outputs but prevent runaway generation
                 import google.generativeai as genai
-                generation_config = genai.types.GenerationConfig(max_output_tokens=500)
+                generation_config = genai.types.GenerationConfig(max_output_tokens=1500)
                 
                 response = self.client.generate_content(
                     full_prompt,
@@ -146,7 +146,7 @@ class GeminiClient:
         start_time = time.time()
         try:
             import google.generativeai as genai
-            generation_config = genai.types.GenerationConfig(max_output_tokens=500)
+            generation_config = genai.types.GenerationConfig(max_output_tokens=1500)
             response = self.client.generate_content(prompt, generation_config=generation_config)
             
             logger.info(f"Gemini API Text Latency: {time.time() - start_time:.3f}s")
