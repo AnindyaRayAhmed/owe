@@ -32,5 +32,8 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 ENV PORT=8080
 EXPOSE $PORT
 
+# Ensure backend directory is in the Python search path for import resolution
+ENV PYTHONPATH=/app/backend
+
 # Start FastAPI server
-CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+CMD uvicorn main:app --host 0.0.0.0 --port $PORT
