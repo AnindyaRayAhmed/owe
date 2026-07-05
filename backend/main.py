@@ -3,13 +3,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
-from models.schemas import ChatRequest, ChatResponse
+import logging
+from models.schemas import ChatRequest, ChatResponse, GeminiDebugResponse
 from services.ai_service import AIService
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Owe MVP API", description="AI-powered civic reciprocity platform")
 
 # Initialize AI Service
 ai_service = AIService()
+
+@app.on_event("startup")
+async def startup_event():
+    status = ai_service.gemini_client.get_debug_status()
+    if status["mode"] == "gemini":
+        logger.info(f"Owe Backend starting in GEMINI mode using model {status['model']}.")
+    else:
+        logger.warning("Owe Backend starting in FALLBACK simulation mode.")
 
 # Enable CORS for local development
 app.add_middleware(
@@ -24,6 +36,11 @@ app.add_middleware(
 def healthcheck():
     """Healthcheck endpoint for deployment verification."""
     return {"status": "ok"}
+
+@app.get("/api/debug/gemini", response_model=GeminiDebugResponse)
+def get_gemini_debug():
+    """Runtime verification endpoint for Gemini pipeline."""
+    return ai_service.gemini_client.get_debug_status()
 
 @app.get("/api/brief")
 def get_brief():
@@ -49,7 +66,7 @@ def chat_with_civic_ai(request: ChatRequest):
     """
     try:
         response = ai_service.chat(request.message)
-        return ChatResponse(reply=response["reply"])
+        return ChatResponse(reply=response["reply"], source=response.get("source"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 

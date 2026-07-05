@@ -40,6 +40,7 @@ class AIService:
             # The client will retry once internally if JSON is malformed
             api_response = self.gemini_client.generate_json_content(prompt, retries=1)
             if api_response:
+                api_response["source"] = "gemini"
                 return api_response
             else:
                 logger.warning("Gemini JSON generation failed. Activating deterministic fallback engine.")
@@ -79,9 +80,10 @@ class AIService:
             # Chat endpoints typically return text, but we enforce JSON wrapper for consistency
             api_response = self.gemini_client.generate_json_content(prompt, retries=1)
             if api_response and "reply" in api_response:
+                api_response["source"] = "gemini"
                 return api_response
             elif api_response and "response" in api_response:
-                return {"reply": api_response["response"]}
+                return {"reply": api_response["response"], "source": "gemini"}
             else:
                 logger.warning("Gemini Chat generation failed. Activating fallback engine.")
 
@@ -141,7 +143,8 @@ class AIService:
             "frictionPoints": total_friction,
             "openMissions": len(raw_data.get("missions", [])),
             "insights": insights,
-            "momentum": raw_data.get("momentum", [])
+            "momentum": raw_data.get("momentum", []),
+            "source": "fallback"
         }
         
     def _simulate_chat(self, user_query: str, raw_data: dict) -> dict:
@@ -169,4 +172,4 @@ class AIService:
         else:
             reply = "I am here to help you understand local civic patterns and community momentum in Kolkata."
 
-        return {"reply": reply}
+        return {"reply": reply, "source": "fallback"}

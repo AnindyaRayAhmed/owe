@@ -10,6 +10,7 @@ class GeminiClient:
         self.client = None
         # Upgraded to Gemini 2.5 Flash for live AI pipeline
         self.model_name = "gemini-2.5-flash"
+        self.errors = []
         
         if self.api_key:
             try:
@@ -19,13 +20,30 @@ class GeminiClient:
                 # We configure generation config to hint at JSON output
                 # Using standard parameters for robust execution
                 self.client = genai.GenerativeModel(self.model_name)
-                logger.info(f"Gemini Client ({self.model_name}) initialized successfully.")
+                
+                masked_key = f"...{self.api_key[-4:]}" if len(self.api_key) > 4 else "***"
+                logger.info(f"Gemini Client ({self.model_name}) initialized successfully with API key {masked_key}.")
             except ImportError:
-                logger.warning("google-generativeai package not found. Running in mock simulation mode.")
+                msg = "google-generativeai package not found. Running in mock simulation mode."
+                logger.warning(msg)
+                self.errors.append(msg)
             except Exception as e:
-                logger.error(f"Error configuring Gemini client: {e}")
+                msg = f"Error configuring Gemini client: {e}"
+                logger.error(msg)
+                self.errors.append(msg)
         else:
-            logger.info("No GEMINI_API_KEY environment variable set. Running in mock simulation mode.")
+            msg = "No GEMINI_API_KEY environment variable set. Running in mock simulation mode."
+            logger.info(msg)
+            self.errors.append(msg)
+
+    def get_debug_status(self) -> dict:
+        return {
+            "status": "active" if self.client else "fallback",
+            "mode": "gemini" if self.client else "simulation",
+            "key_configured": bool(self.api_key),
+            "model": self.model_name,
+            "errors": self.errors
+        }
 
     def generate_json_content(self, prompt: str, retries: int = 1) -> dict:
         """
@@ -55,7 +73,17 @@ class GeminiClient:
                 logger.warning(f"Attempt {attempt + 1}: Gemini API returned empty response.")
                 
             except Exception as e:
-                logger.error(f"Attempt {attempt + 1}: Gemini API execution failed: {e}.")
+                err_type = type(e).__name__
+                if "Quota" in err_type or "ResourceExhausted" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API quota exceeded ({err_type}).")
+                elif "Auth" in err_type or "PermissionDenied" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API authentication failed ({err_type}).")
+                elif "Timeout" in err_type or "DeadlineExceeded" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API request timed out ({err_type}).")
+                elif "InvalidArgument" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Invalid argument (e.g. invalid model): {e}")
+                else:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API execution failed: {e}.")
                 # If it's a quota or network error, retrying might not help, but we try once.
         
         logger.error("All Gemini API attempts failed or returned malformed JSON. Falling back.")
@@ -72,6 +100,16 @@ class GeminiClient:
                 if response and response.text:
                     return response.text
             except Exception as e:
-                logger.error(f"Attempt {attempt + 1}: Gemini API execution failed: {e}.")
+                err_type = type(e).__name__
+                if "Quota" in err_type or "ResourceExhausted" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API quota exceeded ({err_type}).")
+                elif "Auth" in err_type or "PermissionDenied" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API authentication failed ({err_type}).")
+                elif "Timeout" in err_type or "DeadlineExceeded" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API request timed out ({err_type}).")
+                elif "InvalidArgument" in err_type:
+                    logger.error(f"Attempt {attempt + 1}: Invalid argument (e.g. invalid model): {e}")
+                else:
+                    logger.error(f"Attempt {attempt + 1}: Gemini API execution failed: {e}.")
         
         return None
