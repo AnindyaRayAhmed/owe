@@ -30,7 +30,7 @@ class ContextBuilder:
     @staticmethod
     def build_missions_context(raw_data: dict) -> str:
         """Assembles rich context specifically for generating community mission descriptions."""
-        missions = raw_data.get("missions", [])[:15]
+        missions = raw_data.get("missions", [])[:4]
         
         context = "ACTIVE MISSIONS REQUIRING ENRICHMENT:\n\n"
         for i, m in enumerate(missions):
