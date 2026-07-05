@@ -77,34 +77,58 @@ class GeminiClient:
             "errors": self.errors
         }
 
+    def _extract_json(self, text: str) -> str:
+        """Helper to extract JSON payload from text that might contain markdown blocks."""
+        text = text.strip()
+        first_brace = text.find('{')
+        first_bracket = text.find('[')
+        
+        start_idx = -1
+        end_char = ''
+        if first_brace != -1 and (first_bracket == -1 or first_brace < first_bracket):
+            start_idx = first_brace
+            end_char = '}'
+        elif first_bracket != -1:
+            start_idx = first_bracket
+            end_char = ']'
+            
+        if start_idx == -1:
+            return text
+            
+        end_idx = text.rfind(end_char)
+        if end_idx != -1:
+            return text[start_idx:end_idx + 1]
+            
+        return text
+
     def generate_json_content(self, prompt: str, retries: int = 1) -> dict:
         """
-        Sends a prompt to the Gemini API, forcing a structured JSON parse.
+        Sends a prompt to the Gemini API, forcing a structured JSON parse manually.
         If the response is malformed, it retries once.
         Returns a dict if successful, or raises a GeminiException.
         """
         if not self.client:
             raise GeminiAuthError(f"Gemini client is uninitialized. Configuration errors: {self.errors}")
             
+        # Append instructions ensuring the model output contains valid JSON
+        json_instruction = "\n\nCRITICAL: Return ONLY a valid JSON object or list. Do not include extra conversational text."
+        full_prompt = prompt + json_instruction
+            
         json_failures = 0
         for attempt in range(retries + 1):
             start_time = time.time()
             try:
-                # Ask model explicitly to return valid JSON
-                generation_config = {"response_mime_type": "application/json"}
-                response = self.client.generate_content(
-                    prompt,
-                    generation_config=generation_config
-                )
+                response = self.client.generate_content(full_prompt)
                 
                 latency = time.time() - start_time
                 logger.info(f"Gemini API attempt {attempt + 1} latency: {latency:.3f} seconds")
                 
                 if response and response.text:
                     try:
-                        return json.loads(response.text)
+                        clean_text = self._extract_json(response.text)
+                        return json.loads(clean_text)
                     except json.JSONDecodeError as je:
-                        logger.warning(f"Attempt {attempt + 1}: Gemini returned invalid JSON. Retrying.")
+                        logger.warning(f"Attempt {attempt + 1}: Gemini returned invalid JSON. Raw: {response.text[:200]}... Retrying.")
                         json_failures += 1
                         if json_failures >= 2:
                             raise GeminiInvalidJSONError("Gemini returned invalid JSON twice.") from je

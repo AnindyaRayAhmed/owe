@@ -30,6 +30,7 @@ class BigQueryService:
         if not self.client:
             raise Exception("BigQuery client not initialized.")
             
+        logger.info(f"Executing SQL Query:\n{query}")
         start_time = time.time()
         try:
             query_job = self.client.query(query)
@@ -79,17 +80,19 @@ class BigQueryService:
             
         try:
             query = f"""
-                SELECT 'Environmental' as type, neighborhood, heat_risk_level as detail, timestamp 
-                FROM `{self.project_id}.{self.dataset_id}.environmental_stress`
-                WHERE heat_risk_level = 'Extreme' OR flooding_risk > 8.0
-                ORDER BY timestamp DESC LIMIT 5
-                
+                SELECT * FROM (
+                  SELECT 'Environmental' as type, neighborhood, heat_risk_level as detail, CAST(timestamp AS STRING) as timestamp 
+                  FROM `{self.project_id}.{self.dataset_id}.environmental_stress`
+                  WHERE heat_risk_level = 'Extreme' OR flooding_risk > 8.0
+                  ORDER BY timestamp DESC LIMIT 5
+                )
                 UNION ALL
-                
-                SELECT 'Transport' as type, neighborhood, congestion_level as detail, timestamp
-                FROM `{self.project_id}.{self.dataset_id}.transport_density`
-                WHERE congestion_level = 'Gridlock'
-                ORDER BY timestamp DESC LIMIT 5
+                SELECT * FROM (
+                  SELECT 'Transport' as type, neighborhood, congestion_level as detail, CAST(timestamp AS STRING) as timestamp
+                  FROM `{self.project_id}.{self.dataset_id}.transport_density`
+                  WHERE congestion_level = 'Gridlock'
+                  ORDER BY timestamp DESC LIMIT 5
+                )
             """
             return self._execute_query(query)
         except Exception as e:
@@ -103,17 +106,19 @@ class BigQueryService:
             
         try:
             query = f"""
-                SELECT 'Mission' as type, neighborhood, mission_title as detail, created_at as timestamp
-                FROM `{self.project_id}.{self.dataset_id}.community_missions`
-                WHERE completion_status = 'Completed'
-                ORDER BY created_at DESC LIMIT 5
-                
+                SELECT * FROM (
+                  SELECT 'Mission' as type, neighborhood, mission_title as detail, CAST(created_at AS STRING) as timestamp
+                  FROM `{self.project_id}.{self.dataset_id}.community_missions`
+                  WHERE completion_status = 'Completed'
+                  ORDER BY created_at DESC LIMIT 5
+                )
                 UNION ALL
-                
-                SELECT 'Sentiment' as type, neighborhood, dominant_topic as detail, timestamp
-                FROM `{self.project_id}.{self.dataset_id}.community_sentiment`
-                WHERE sentiment_score > 0.5
-                ORDER BY timestamp DESC LIMIT 5
+                SELECT * FROM (
+                  SELECT 'Sentiment' as type, neighborhood, dominant_topic as detail, CAST(timestamp AS STRING) as timestamp
+                  FROM `{self.project_id}.{self.dataset_id}.community_sentiment`
+                  WHERE sentiment_score > 0.5
+                  ORDER BY timestamp DESC LIMIT 5
+                )
             """
             return self._execute_query(query)
         except Exception as e:
