@@ -4,20 +4,67 @@
 
 @layer base {
   body {
-    @apply bg-owe-bg text-owe-text font-sans antialiased;
+    @apply bg-owe-bg text-owe-textPrimary font-sans antialiased;
+  }
+  
+  /* Selection styling */
+  ::selection {
+    @apply bg-owe-cyan text-owe-primary;
+  }
+
+  /* Custom scrollbar for premium look */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-owe-border rounded-full hover:bg-owe-textMuted/50 transition-colors;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-owe-surface rounded-xl shadow-soft p-6 border border-slate-100;
+    @apply bg-owe-card rounded-2xl shadow-soft p-6 border border-owe-border/80 transition-all duration-300;
   }
   
   .btn-primary {
-    @apply bg-owe-accent hover:bg-owe-accentLight text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-owe-primary hover:bg-owe-secondary text-white font-medium py-2 px-5 rounded-xl transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-owe-primary/20;
   }
   
   .btn-secondary {
-    @apply bg-slate-100 hover:bg-slate-200 text-owe-text font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-owe-cyan/40 hover:bg-owe-cyan text-owe-primary font-medium py-2 px-5 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-owe-cyan/50;
   }
+  
+  .bg-glow-glow {
+    position: relative;
+  }
+  .bg-glow-glow::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    left: 20%;
+    width: 60%;
+    height: 140%;
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.04) 0%, rgba(15, 118, 110, 0.01) 60%, rgba(246, 251, 250, 0) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-transition {
+  animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

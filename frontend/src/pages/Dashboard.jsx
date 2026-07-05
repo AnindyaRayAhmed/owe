@@ -55,105 +55,107 @@ const Dashboard = () => {
   const getSignalBadgeColor = (strength) => {
     switch (strength) {
       case 'High':
-        return 'bg-rose-50 text-rose-700 border-rose-100';
+        return 'bg-rose-50 text-owe-danger border-rose-100/50';
       case 'Moderate':
-        return 'bg-amber-50 text-amber-700 border-amber-100';
+        return 'bg-amber-50 text-owe-warning border-amber-100/50';
       case 'Low':
       default:
-        return 'bg-slate-50 text-slate-600 border-slate-100';
+        return 'bg-owe-cyan/20 text-owe-primary border-owe-border/40';
     }
   };
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700 pb-16">
+    <div className="space-y-10 animate-page-transition pb-16">
       
       {/* Header Section */}
-      <section className="space-y-3">
-        <h2 className="text-4xl font-semibold tracking-tight text-slate-900">Community Overview</h2>
-        <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">
-          A synthesis of resilience, friction, and mutual aid across Kolkata neighborhoods over the past 48 hours.
-        </p>
+      <section className="space-y-3 bg-glow-glow py-4 rounded-2xl relative overflow-hidden">
+        <div className="relative z-10">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-owe-textPrimary">Community Overview</h2>
+          <p className="text-owe-textSecondary text-base sm:text-lg max-w-2xl leading-relaxed mt-2">
+            A synthesis of resilience, friction, and mutual aid across Kolkata neighborhoods over the past 48 hours.
+          </p>
+        </div>
       </section>
 
       {/* Top Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start space-x-4">
-          <div className="p-3 bg-teal-50 text-teal-600 rounded-xl">
-            <Activity size={24} strokeWidth={2} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="card flex items-start space-x-4 p-5 hover:scale-[1.01]">
+          <div className="p-3 bg-owe-cyan/50 text-owe-primary rounded-xl">
+            <Activity size={22} strokeWidth={2.5} />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Wellbeing Pulse</p>
-            <p className="text-3xl font-semibold text-slate-900 tracking-tight">{data.pulseScore}<span className="text-lg text-slate-400 font-normal">/100</span></p>
+            <p className="text-xs font-semibold text-owe-textSecondary uppercase tracking-wider mb-1">Wellbeing Pulse</p>
+            <p className="text-3xl font-bold text-owe-textPrimary tracking-tight">{data.pulseScore}<span className="text-base text-owe-textMuted font-normal">/100</span></p>
           </div>
         </div>
         
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start space-x-4">
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Users size={24} strokeWidth={2} />
+        <div className="card flex items-start space-x-4 p-5 hover:scale-[1.01]">
+          <div className="p-3 bg-owe-aqua/40 text-owe-secondary rounded-xl">
+            <Users size={22} strokeWidth={2.5} />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Active Neighbors</p>
-            <p className="text-3xl font-semibold text-slate-900 tracking-tight">{data.activeNeighbors}</p>
+            <p className="text-xs font-semibold text-owe-textSecondary uppercase tracking-wider mb-1">Active Neighbors</p>
+            <p className="text-3xl font-bold text-owe-textPrimary tracking-tight">{data.activeNeighbors}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start space-x-4">
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
-            <ShieldCheck size={24} strokeWidth={2} />
+        <div className="card flex items-start space-x-4 p-5 hover:scale-[1.01]">
+          <div className="p-3 bg-rose-50 text-owe-danger border border-rose-100/50 rounded-xl">
+            <ShieldCheck size={22} strokeWidth={2.5} />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Resolved Issues</p>
-            <p className="text-3xl font-semibold text-slate-900 tracking-tight">{data.momentum?.length || 0}</p>
+            <p className="text-xs font-semibold text-owe-textSecondary uppercase tracking-wider mb-1">Resolved Issues</p>
+            <p className="text-3xl font-bold text-owe-textPrimary tracking-tight">{data.momentum?.length || 0}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start space-x-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <HeartHandshake size={24} strokeWidth={2} />
+        <div className="card flex items-start space-x-4 p-5 hover:scale-[1.01]">
+          <div className="p-3 bg-emerald-50 text-emerald-600 border border-emerald-100/50 rounded-xl">
+            <HeartHandshake size={22} strokeWidth={2.5} />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Open Missions</p>
-            <p className="text-3xl font-semibold text-slate-900 tracking-tight">{data.openMissions}</p>
+            <p className="text-xs font-semibold text-owe-textSecondary uppercase tracking-wider mb-1">Open Missions</p>
+            <p className="text-3xl font-bold text-owe-textPrimary tracking-tight">{data.openMissions}</p>
           </div>
         </div>
       </div>
 
       {/* Main Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-10">
         
         {/* Left Column: AI Insights */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6 md:space-y-8">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-semibold tracking-tight text-slate-900">Emerging Signals</h3>
-            <span className="text-sm font-medium text-slate-400">Past 48 hours</span>
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-owe-textPrimary">Emerging Signals</h3>
+            <span className="text-xs sm:text-sm font-semibold text-owe-textMuted uppercase tracking-wider">Past 48 hours</span>
           </div>
           
           <div className="space-y-6">
             {data.insights?.map((insight, idx) => (
-              <div key={idx} className="bg-white rounded-2xl p-7 border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="flex justify-between items-start mb-4">
-                  <h4 className="text-xl font-semibold text-slate-900 leading-snug">{insight.title}</h4>
-                  <span className={`text-xs px-3 py-1 rounded-full border font-medium whitespace-nowrap ml-4 ${getSignalBadgeColor(insight.signalStrength)}`}>
+              <div key={idx} className="card p-6 md:p-7 hover:scale-[1.01] hover:border-owe-primary/20">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4">
+                  <h4 className="text-lg sm:text-xl font-bold text-owe-textPrimary leading-snug">{insight.title}</h4>
+                  <span className={`text-xs px-2.5 py-1 rounded-full border font-semibold whitespace-nowrap ${getSignalBadgeColor(insight.signalStrength)}`}>
                     {insight.signalStrength} Signal
                   </span>
                 </div>
                 
-                <p className="text-slate-600 text-base leading-relaxed mb-6">{insight.description}</p>
+                <p className="text-owe-textSecondary text-sm sm:text-base leading-relaxed mb-6">{insight.description}</p>
                 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100/50">
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Affected</span>
-                    <span className="text-sm text-slate-700 font-medium">{insight.affectedGroups}</span>
+                  <div className="bg-owe-bg rounded-xl p-3 border border-owe-border/40">
+                    <span className="text-[10px] font-semibold text-owe-textMuted uppercase tracking-wider block mb-1">Affected</span>
+                    <span className="text-xs sm:text-sm text-owe-textSecondary font-semibold">{insight.affectedGroups}</span>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100/50">
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Timeframe</span>
-                    <span className="text-sm text-slate-700 font-medium capitalize">{insight.timeframe}</span>
+                  <div className="bg-owe-bg rounded-xl p-3 border border-owe-border/40">
+                    <span className="text-[10px] font-semibold text-owe-textMuted uppercase tracking-wider block mb-1">Timeframe</span>
+                    <span className="text-xs sm:text-sm text-owe-textSecondary font-semibold capitalize">{insight.timeframe}</span>
                   </div>
                 </div>
 
-                <div className="bg-teal-50/50 p-4 rounded-xl border border-teal-100/30">
-                  <span className="text-xs font-semibold text-teal-800 uppercase tracking-wider block mb-1.5">Reasoning Analysis</span>
-                  <p className="text-sm text-teal-900/80 leading-relaxed">{insight.explainability}</p>
+                <div className="bg-owe-cyan/20 border-l-4 border-owe-primary p-4 rounded-r-xl rounded-l-sm">
+                  <span className="text-xs font-bold text-owe-primary uppercase tracking-wider block mb-1.5">Reasoning Analysis</span>
+                  <p className="text-sm text-owe-textSecondary leading-relaxed">{insight.explainability}</p>
                 </div>
               </div>
             ))}
@@ -161,29 +163,29 @@ const Dashboard = () => {
         </div>
 
         {/* Right Column: Community Momentum */}
-        <div className="lg:col-span-5 xl:col-span-4 space-y-8">
-          <h3 className="text-2xl font-semibold tracking-tight text-slate-900">Community Momentum</h3>
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6 md:space-y-8">
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-owe-textPrimary">Community Momentum</h3>
           
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full -z-10 opacity-50"></div>
+          <div className="card p-5 sm:p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-owe-cyan/30 rounded-bl-full -z-10 opacity-30"></div>
             
-            <div className="space-y-8 relative z-10">
+            <div className="space-y-6 relative z-10">
               {data.momentum?.map((item, idx) => (
                 <div key={idx} className="relative pl-6">
                   {idx !== data.momentum.length - 1 && (
-                    <div className="absolute left-2.5 top-6 bottom-[-24px] w-px bg-slate-100"></div>
+                    <div className="absolute left-2.5 top-6 bottom-[-24px] w-px bg-owe-border"></div>
                   )}
-                  <div className="absolute left-1.5 top-1.5 w-2 h-2 rounded-full bg-teal-500 ring-4 ring-teal-50"></div>
+                  <div className="absolute left-1.5 top-1.5 w-2.5 h-2.5 rounded-full bg-owe-primary ring-4 ring-owe-cyan/40"></div>
                   
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-slate-900 text-sm">{item.title}</h4>
-                      <span className="flex items-center text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                        <Clock size={10} className="mr-1" />
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-bold text-owe-textPrimary text-sm leading-snug">{item.title}</h4>
+                      <span className="flex items-center text-[9px] font-bold text-owe-textMuted uppercase tracking-wider shrink-0">
+                        <Clock size={10} className="mr-1 text-owe-textMuted" />
                         {item.timeframe}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-500 leading-relaxed">{item.description}</p>
+                    <p className="text-xs sm:text-sm text-owe-textSecondary leading-relaxed">{item.description}</p>
                   </div>
                 </div>
               ))}
