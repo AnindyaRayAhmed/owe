@@ -1,0 +1,23 @@
+[
+  {
+    "title": "Clear snow for elderly residents on Pine St.",
+    "impactLevel": "High",
+    "affectedGroup": "Seniors",
+    "whyItMatters": "Heavy overnight snowfall has trapped several elderly residents, preventing them from accessing medical appointments and grocery deliveries.",
+    "volunteersNeeded": 4
+  },
+  {
+    "title": "Assist visual-impaired commuters at Station B",
+    "impactLevel": "Medium",
+    "affectedGroup": "Visually Impaired",
+    "whyItMatters": "The tactile paving is under repair at Station B, making it difficult for visually impaired commuters to navigate safely.",
+    "volunteersNeeded": 2
+  },
+  {
+    "title": "Translate community health flyers",
+    "impactLevel": "Medium",
+    "affectedGroup": "Non-native speakers",
+    "whyItMatters": "New winter health guidelines need to be translated into Spanish and Mandarin to ensure all community members are informed.",
+    "volunteersNeeded": 3
+  }
+]

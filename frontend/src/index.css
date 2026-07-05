@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-owe-bg text-owe-text font-sans antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-owe-surface rounded-xl shadow-soft p-6 border border-slate-100;
+  }
+  
+  .btn-primary {
+    @apply bg-owe-accent hover:bg-owe-accentLight text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-100 hover:bg-slate-200 text-owe-text font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+}

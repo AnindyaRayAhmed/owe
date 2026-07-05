@@ -1,0 +1,213 @@
+{
+  "localities": [
+    "Gariahat",
+    "Kasba",
+    "Lake Market",
+    "Ballygunge",
+    "Park Circus",
+    "Tollygunge",
+    "Salt Lake",
+    "Behala",
+    "Jadavpur"
+  ],
+  "accessibility_incidents": [
+    {
+      "id": "acc-101",
+      "locality": "Kasba",
+      "timestamp": "2026-07-05T09:30:00Z",
+      "title": "Severe waterlogging on pavement near Kasba Post Office",
+      "description": "Due to a localized drainage clog, the main walking pavement is fully submerged, making it impassable for elderly residents and wheelchair users.",
+      "affected_group": "Seniors and mobility-challenged residents",
+      "status": "reported",
+      "timeframe": "today"
+    },
+    {
+      "id": "acc-102",
+      "locality": "Gariahat",
+      "timestamp": "2026-07-05T08:15:00Z",
+      "title": "Metro elevator breakdown at Gariahat crossing",
+      "description": "The elevator assisting senior passengers is currently non-functional.",
+      "affected_group": "Elderly and disabled commuters",
+      "status": "reported",
+      "timeframe": "today"
+    },
+    {
+      "id": "acc-103",
+      "locality": "Behala",
+      "timestamp": "2026-07-04T16:00:00Z",
+      "title": "Tactile path cleared near Behala Tram Depot",
+      "description": "Loose brick piles from private building construction have been successfully cleared by local volunteers.",
+      "affected_group": "Visually impaired pedestrians",
+      "status": "resolved",
+      "timeframe": "yesterday"
+    }
+  ],
+  "transport_congestion": [
+    {
+      "id": "trn-201",
+      "locality": "Kasba",
+      "timestamp": "2026-07-05T10:00:00Z",
+      "title": "Bypass connector traffic diversion",
+      "description": "Vehicular traffic is moving extremely slowly due to water accumulation on the lane connecting to the EM Bypass.",
+      "delay_minutes": 25,
+      "severity": "High",
+      "status": "reported",
+      "timeframe": "today"
+    },
+    {
+      "id": "trn-202",
+      "locality": "Park Circus",
+      "timestamp": "2026-07-05T12:00:00Z",
+      "title": "Seven-point crossing bottleneck clearing",
+      "description": "A stalled public bus on the flyover ramp has been towed. Traffic flow is returning to normal.",
+      "delay_minutes": 10,
+      "severity": "Low",
+      "status": "resolved",
+      "timeframe": "today"
+    }
+  ],
+  "environmental_stress": [
+    {
+      "id": "env-301",
+      "locality": "Park Circus",
+      "timestamp": "2026-07-05T11:00:00Z",
+      "title": "Air Quality Index (AQI) Spike",
+      "description": "Local PM2.5 readings spiked to 180 (Unhealthy) around the heavy traffic zone near the crossing.",
+      "metric": "AQI 180",
+      "duration": "past 24 hours",
+      "status": "reported",
+      "timeframe": "past 24 hours"
+    },
+    {
+      "id": "env-302",
+      "locality": "Salt Lake",
+      "timestamp": "2026-07-04T07:00:00Z",
+      "title": "Community tree planting near Central Park",
+      "description": "Neighborhood association successfully planted 50 saplings to improve local air quality and provide shade.",
+      "metric": "50 Saplings Planted",
+      "duration": "yesterday",
+      "status": "resolved",
+      "timeframe": "yesterday"
+    }
+  ],
+  "civic_complaints": [
+    {
+      "id": "civ-401",
+      "locality": "Jadavpur",
+      "timestamp": "2026-07-04T14:30:00Z",
+      "title": "Streetlight outage near Jadavpur University Gate 4",
+      "description": "Three consecutive street lamps have been dark for three nights, creating safety concerns for students.",
+      "reporter_type": "Student Association",
+      "status": "reported",
+      "timeframe": "past 48 hours"
+    },
+    {
+      "id": "civ-402",
+      "locality": "Lake Market",
+      "timestamp": "2026-07-05T06:30:00Z",
+      "title": "Scattered garbage dump cleaned",
+      "description": "Overflowing waste near the walking path has been cleared by municipal workers following community reports.",
+      "reporter_type": "Vendor Association",
+      "status": "resolved",
+      "timeframe": "today"
+    }
+  ],
+  "community_sentiment": [
+    {
+      "id": "sen-501",
+      "locality": "Kasba",
+      "timestamp": "2026-07-05T13:00:00Z",
+      "sentiment": "Anxious",
+      "summary": "Neighbors are expressing worry about the lack of drainage clearing before the heavy monsoon spells, noting vulnerable seniors are getting cut off.",
+      "sample_size": 18,
+      "timeframe": "today"
+    },
+    {
+      "id": "sen-502",
+      "locality": "Jadavpur",
+      "timestamp": "2026-07-04T18:00:00Z",
+      "sentiment": "Collaborative",
+      "summary": "Local youths are coordinating via message boards to walk female students home due to the streetlight outage near the campus.",
+      "sample_size": 24,
+      "timeframe": "past 48 hours"
+    },
+    {
+      "id": "sen-503",
+      "locality": "Ballygunge",
+      "timestamp": "2026-07-05T09:00:00Z",
+      "sentiment": "Grateful",
+      "summary": "High appreciation recorded for community members who set up temporary drinking water stations near the auto stand during peak afternoon heat.",
+      "sample_size": 12,
+      "timeframe": "today"
+    },
+    {
+      "id": "sen-504",
+      "locality": "Lake Market",
+      "timestamp": "2026-07-05T10:00:00Z",
+      "sentiment": "Relieved",
+      "summary": "Vendors expressed relief that the waste blockage was cleared quickly, allowing normal operations.",
+      "sample_size": 8,
+      "timeframe": "today"
+    }
+  ],
+  "missions": [
+    {
+      "id": "mis-001",
+      "title": "Assist elderly with pharmacy pickups in Kasba",
+      "impactLevel": "High",
+      "category": "Community Care",
+      "affectedGroup": "Seniors",
+      "whyItMatters": "Drainage overflows near the Kasba Post Office have made the sidewalks unusable. Several elderly residents require medication deliveries.",
+      "locality": "Kasba",
+      "volunteersNeeded": 3,
+      "linked_incident": "acc-101",
+      "timeframe": "today"
+    },
+    {
+      "id": "mis-002",
+      "title": "Escort transit walks near Jadavpur University",
+      "impactLevel": "Medium",
+      "category": "Public Space",
+      "affectedGroup": "Students",
+      "whyItMatters": "The streetlights along the primary walking lane to the station have failed, raising safety worries for late-night classes.",
+      "locality": "Jadavpur",
+      "volunteersNeeded": 2,
+      "linked_incident": "civ-401",
+      "timeframe": "past 48 hours"
+    },
+    {
+      "id": "mis-003",
+      "title": "Distribute water near Gariahat crossing",
+      "impactLevel": "Medium",
+      "category": "Community Care",
+      "affectedGroup": "Elderly commuters",
+      "whyItMatters": "With the metro elevator broken and high afternoon temperatures, senior commuters navigating the stairs need hydration and rest support.",
+      "locality": "Gariahat",
+      "volunteersNeeded": 4,
+      "linked_incident": "acc-102",
+      "timeframe": "today"
+    }
+  ],
+  "momentum": [
+    {
+      "title": "Tactile path cleared in Behala",
+      "description": "Local volunteers removed construction debris near the Tram Depot, restoring safe access for visually impaired pedestrians.",
+      "timeframe": "yesterday"
+    },
+    {
+      "title": "Lake Market sanitation restored",
+      "description": "Overflowing waste near the vendor pathways was swiftly cleared following community reports, restoring hygiene.",
+      "timeframe": "today"
+    },
+    {
+      "title": "Park Circus bottleneck easing",
+      "description": "A stalled bus was towed, resolving a major traffic choke point and reducing commuter frustration.",
+      "timeframe": "today"
+    },
+    {
+      "title": "Tree planting in Salt Lake",
+      "description": "Residents planted 50 saplings near Central Park, taking collective action to improve local air quality.",
+      "timeframe": "yesterday"
+    }
+  ]
+}

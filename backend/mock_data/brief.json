@@ -1,0 +1,23 @@
+{
+  "pulseScore": 84,
+  "activeNeighbors": "1,420",
+  "frictionPoints": 8,
+  "openMissions": 3,
+  "insights": [
+    {
+      "title": "Wheelchair inaccessibility reported on Main St",
+      "description": "Multiple reports indicate construction is blocking the primary accessible ramp on 4th & Main.",
+      "explainability": "Detected from 5 related civic complaints filed in the last 24 hours focusing on mobility keywords."
+    },
+    {
+      "title": "High stress at Central Station during commute",
+      "description": "Prolonged delays have increased commuter frustration significantly this morning.",
+      "explainability": "Aggregated transit delays combined with negative sentiment spikes on public transit channels."
+    }
+  ],
+  "impacts": [
+    "3 volunteers cleared debris from Elm Park pathway.",
+    "Local business 'Daily Grind' opened early to provide warmth during the freeze.",
+    "Community resolved 4 noise disputes amicably."
+  ]
+}
