@@ -122,13 +122,13 @@ class AIService:
             missions.append({
                 "mission_id": f"mission_{i}",
                 "title": m.get("mission_title", "Community Action"),
-                "neighborhood": hood,
+                "locality": hood,
                 "category": cat,
                 "urgency_level": m.get("urgency_level", "Medium"),
-                "affected_group": m.get("affected_group", "Local Residents, Commuters"),
-                "volunteer_count_needed": 5 + (i * 2 % 15), # Deterministic varied count
-                "why_it_matters": f"This {cat.lower()} issue in {hood} is currently elevating local stress levels and impacting daily mobility for residents. Immediate attention will restore civic accessibility.",
-                "action_guidance": f"Coordinate with local {hood} neighborhood groups to review the site and provide immediate on-ground support."
+                "affectedGroup": m.get("affected_group", "Local Residents, Commuters"),
+                "volunteersNeeded": 5 + (i * 2 % 15), # Deterministic varied count
+                "whyItMatters": f"This {cat.lower()} issue in {hood} is currently elevating local stress levels and impacting daily mobility for residents. Immediate attention will restore civic accessibility.",
+                "actionGuidance": f"Coordinate with local {hood} neighborhood groups to review the site and provide immediate on-ground support."
             })
             
         if not missions:
@@ -147,9 +147,9 @@ class AIService:
                     if m_id in enrichments:
                         rich_data = enrichments[m_id]
                         if rich_data.get("why_it_matters"):
-                            m["why_it_matters"] = rich_data["why_it_matters"]
+                            m["whyItMatters"] = rich_data["why_it_matters"]
                         if rich_data.get("action_guidance"):
-                            m["action_guidance"] = rich_data["action_guidance"]
+                            m["actionGuidance"] = rich_data["action_guidance"]
                 logger.info(f"Total Endpoint Time (get_missions - hybrid): {time.time() - start_time:.3f}s")
                 return missions
             else:
